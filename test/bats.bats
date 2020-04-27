@@ -51,13 +51,15 @@ fixtures bats
 @test "summary passing tests" {
   run filter_control_sequences bats -p "$FIXTURE_ROOT/passing.bats"
   [ $status -eq 0 ]
-  [ "${lines[1]}" = "1 test, 0 failures" ]
+  [ "${#lines[@]}" -eq 3 ]
+  [ "${lines[2]}" = "1 test, 0 failures" ]
 }
 
 @test "summary passing and skipping tests" {
   run filter_control_sequences bats -p "$FIXTURE_ROOT/passing_and_skipping.bats"
   [ $status -eq 0 ]
-  [ "${lines[3]}" = "3 tests, 0 failures, 2 skipped" ]
+  [ "${#lines[@]}" -eq 5 ]
+  [ "${lines[4]}" = "3 tests, 0 failures, 2 skipped" ]
 }
 
 @test "tap passing and skipping tests" {
@@ -72,13 +74,15 @@ fixtures bats
 @test "summary passing and failing tests" {
   run filter_control_sequences bats -p "$FIXTURE_ROOT/failing_and_passing.bats"
   [ $status -eq 0 ]
-  [ "${lines[4]}" = "2 tests, 1 failure" ]
+  [ "${#lines[@]}" -eq 6 ]
+  [ "${lines[5]}" = "2 tests, 1 failure" ]
 }
 
 @test "summary passing, failing and skipping tests" {
   run filter_control_sequences bats -p "$FIXTURE_ROOT/passing_failing_and_skipping.bats"
   [ $status -eq 0 ]
-  [ "${lines[5]}" = "3 tests, 1 failure, 1 skipped" ]
+  [ "${#lines[@]}" -eq 7 ]
+  [ "${lines[6]}" = "3 tests, 1 failure, 1 skipped" ]
 }
 
 @test "tap passing, failing and skipping tests" {
@@ -366,6 +370,7 @@ END_OF_ERR_MSG
 @test "parse @test lines with various whitespace combinations" {
   run bats "$FIXTURE_ROOT/whitespace.bats"
   [ $status -eq 0 ]
+  printf "'%s'\n" "${lines[@]}"
   [ "${lines[1]}" = 'ok 1 no extra whitespace' ]
   [ "${lines[2]}" = 'ok 2 tab at beginning of line' ]
   [ "${lines[3]}" = 'ok 3 tab before description' ]
@@ -534,4 +539,28 @@ END_OF_ERR_MSG
     outputOffset=$((outputOffset + 3))
     currentErrorLine=$((currentErrorLine + linesPerTest))
   done
+}
+
+@test "run properly captures output and status" {
+  printlines_code() {
+    local ret=$1; shift
+    printf '%s\n' "$@"
+    return "$ret"
+  }
+
+  run printlines_code 5 hello world
+  [ "$status" -eq 5 ]
+  [ "$output" == $'hello\nworld' ]
+  [ "${#lines[@]}" -eq 2 ]
+  [ "${lines[0]}" == 'hello' ]
+  [ "${lines[1]}" == 'world' ]
+
+  run printlines_code 0 ' whitespace ' '' $'\tand\tspecial\rchars' '*'
+  [ "$status" -eq 0 ]
+  [ "$output" == $' whitespace \n\n\tand\tspecial\rchars\n*' ]
+  [ "${#lines[@]}" -eq 4 ]
+  [ "${lines[0]}" == ' whitespace ' ]
+  [ "${lines[1]}" == '' ]
+  [ "${lines[2]}" == $'\tand\tspecial\rchars' ]
+  [ "${lines[3]}" == '*' ]
 }
